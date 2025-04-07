@@ -3,6 +3,7 @@ import SolicitacaoManutencao from './pages/SolicitacaoManutencao';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import TecnicoDashboard from './pages/TecnicoDashboard';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
@@ -11,7 +12,14 @@ function App() {
         <Routes>
           <Route path="/" element={<SolicitacaoManutencao />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route 
+            path="/admin/dashboard" 
+            element={
+              <ProtectedRoute>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/tecnico/acesso/:token" element={<TecnicoDashboard />} />
         </Routes>
       </div>

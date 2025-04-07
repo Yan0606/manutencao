@@ -40,8 +40,9 @@ router.post('/login', async (req, res) => {
 
     const admin = admins[0];
     
-    // Comparação direta da senha
-    if (senha !== admin.senha) {
+    // Comparação da senha usando bcrypt
+    const senhaValida = await bcrypt.compare(senha, admin.senha);
+    if (!senhaValida) {
       console.log('Senha inválida para:', email);
       return res.status(401).json({ message: 'Email ou senha inválidos' });
     }
@@ -50,7 +51,7 @@ router.post('/login', async (req, res) => {
     
     const token = jwt.sign(
       { id: admin.id, email: admin.email },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'sua_chave_secreta',
       { expiresIn: '1h' }
     );
 
