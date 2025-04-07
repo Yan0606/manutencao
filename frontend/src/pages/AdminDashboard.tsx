@@ -147,6 +147,24 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExcluirTecnico = async (id: number) => {
+    if (window.confirm('Tem certeza que deseja excluir o técnico? Esta ação é irreversível.')) {
+      try {
+        const token = localStorage.getItem('token');
+        await axios.delete(
+          `http://localhost:3001/api/admin/tecnicos/${id}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        setMensagem({ tipo: 'sucesso', texto: 'Técnico excluído com sucesso!' });
+        carregarDados();
+      } catch (error) {
+        console.error('Erro ao excluir técnico:', error);
+        setMensagem({ tipo: 'erro', texto: 'Erro ao excluir técnico' });
+      }
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('adminData');
@@ -387,7 +405,7 @@ export default function AdminDashboard() {
                 required
               />
             </div>
-            <div className="flex space-x-3 pt-2">
+            <div className="flex space-x-4 pt-4">
               <button
                 type="submit"
                 className="flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-blue-900 bg-blue-100 hover:bg-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-blue-100 transition-all duration-200"
@@ -400,6 +418,26 @@ export default function AdminDashboard() {
                 className="flex-1 py-2 px-4 border border-blue-100 rounded-md shadow-sm text-sm font-medium text-blue-100 bg-transparent hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-blue-100 transition-all duration-200"
               >
                 Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExcluirTecnico(tecnicoEmEdicao.id)}
+                className="flex-1 py-2 px-4 border border-red-100 rounded-md shadow-sm text-sm font-medium text-red-100 bg-transparent hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-blue-800 focus:ring-red-100 transition-all duration-200"
+              >
+                <svg 
+                  className="w-4 h-4 mr-1.5 inline-block" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" 
+                  />
+                </svg>
+                Excluir Técnico
               </button>
             </div>
           </form>
@@ -524,7 +562,7 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <h3 className="font-medium text-lg text-gray-900">{tecnico.nome}</h3>
                   <p className="text-sm text-gray-600 flex items-center">
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -552,8 +590,9 @@ export default function AdminDashboard() {
                       {tecnico.ativo ? 'Ativo' : 'Inativo'}
                     </span>
                   </div>
-                  <div className="mt-3">
-                    <p className="text-sm text-gray-500 mb-2">
+                  
+                  <div className="mt-4 flex flex-col space-y-3">
+                    <p className="text-sm text-gray-500">
                       Link de acesso:
                       <a 
                         href={`/tecnico/acesso/${tecnico.token}`} 
@@ -566,7 +605,7 @@ export default function AdminDashboard() {
                     </p>
                     <button
                       onClick={() => setTecnicoEmEdicao(tecnico)}
-                      className="inline-flex items-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
+                      className="inline-flex items-center justify-center px-3 py-1.5 border border-blue-600 text-blue-600 rounded-md text-sm font-medium hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200"
                     >
                       <svg 
                         className="w-4 h-4 mr-1.5" 

@@ -13,121 +13,49 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'Token não fornecido' });
     }
 
-    if (!process.env.JWT_SECRET) {
-      console.error('JWT_SECRET não configurado!');
-      return res.status(500).json({ message: 'Erro de configuração do servidor' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    // Verificar se o token não está expirado
-    if (decoded.exp <= Date.now() / 1000) {
-      return res.status(401).json({ message: 'Token expirado' });
-    }
-
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'sua_chave_secreta');
     req.adminId = decoded.id;
     next();
   } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Token expirado' });
-    }
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ message: 'Token inválido' });
-    }
-    res.status(401).json({ message: 'Erro na autenticação' });
+    res.status(401).json({ message: 'Token inválido' });
   }
-};
-
-// Validação de entrada para login
-const validateLoginInput = (req, res, next) => {
-  const { email, senha } = req.body;
-  
-  if (!email || !senha) {
-    return res.status(400).json({ message: 'Email e senha são obrigatórios' });
-  }
-  
-  // Validação de email
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ message: 'Email inválido' });
-  }
-  
-  // Validação de senha
-  if (senha.length < 6) {
-    return res.status(400).json({ message: 'Senha deve ter no mínimo 6 caracteres' });
-  }
-  
-  next();
 };
 
 // Login do administrador
-router.post('/login', validateLoginInput, async (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, senha } = req.body;
+  
+  console.log('Tentativa de login:', email);
 
   try {
-    // Rate limiting por IP
-    const clientIp = req.ip;
-    const loginAttempts = await getLoginAttempts(clientIp);
-    if (loginAttempts >= 5) {
-      return res.status(429).json({ 
-        message: 'Muitas tentativas de login. Tente novamente em 15 minutos.' 
-      });
-    }
-
     const [admins] = await db.execute(
       'SELECT * FROM admins WHERE email = ?',
       [email]
     );
 
     if (admins.length === 0) {
-      await incrementLoginAttempts(clientIp);
+      console.log('Admin não encontrado:', email);
       return res.status(401).json({ message: 'Email ou senha inválidos' });
     }
 
     const admin = admins[0];
-    const senhaValida = await bcrypt.compare(senha, admin.senha);
     
-    if (!senhaValida) {
-      await incrementLoginAttempts(clientIp);
+    // Comparação direta da senha
+    if (senha !== admin.senha) {
+      console.log('Senha inválida para:', email);
       return res.status(401).json({ message: 'Email ou senha inválidos' });
     }
 
-    // Limpar tentativas de login após sucesso
-    await clearLoginAttempts(clientIp);
+    console.log('Login bem sucedido para:', email);
     
-    if (!process.env.JWT_SECRET) {
-      console.error('JWT_SECRET não configurado!');
-      return res.status(500).json({ message: 'Erro de configuração do servidor' });
-    }
-
     const token = jwt.sign(
-      { 
-        id: admin.id, 
-        email: admin.email,
-        type: 'access'
-      },
+      { id: admin.id, email: admin.email },
       process.env.JWT_SECRET,
       { expiresIn: '1h' }
     );
 
-    const refreshToken = jwt.sign(
-      { 
-        id: admin.id, 
-        type: 'refresh'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '7d' }
-    );
-
-    // Salvar refresh token no banco
-    await db.execute(
-      'UPDATE admins SET refresh_token = ? WHERE id = ?',
-      [refreshToken, admin.id]
-    );
-
     res.json({
       token,
-      refreshToken,
       admin: {
         id: admin.id,
         email: admin.email,
@@ -136,52 +64,7 @@ router.post('/login', validateLoginInput, async (req, res) => {
     });
   } catch (error) {
     console.error('Erro no login:', error);
-    res.status(500).json({ message: 'Erro no servidor' });
-  }
-});
-
-// Renovar token
-router.post('/refresh-token', async (req, res) => {
-  const { refreshToken } = req.body;
-
-  if (!refreshToken) {
-    return res.status(400).json({ message: 'Refresh token não fornecido' });
-  }
-
-  try {
-    const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-    
-    if (decoded.type !== 'refresh') {
-      return res.status(401).json({ message: 'Token inválido' });
-    }
-
-    const [admins] = await db.execute(
-      'SELECT * FROM admins WHERE id = ? AND refresh_token = ?',
-      [decoded.id, refreshToken]
-    );
-
-    if (admins.length === 0) {
-      return res.status(401).json({ message: 'Refresh token inválido' });
-    }
-
-    const admin = admins[0];
-
-    const newToken = jwt.sign(
-      { 
-        id: admin.id, 
-        email: admin.email,
-        type: 'access'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
-    res.json({ token: newToken });
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ message: 'Refresh token expirado' });
-    }
-    res.status(401).json({ message: 'Refresh token inválido' });
+    res.status(500).json({ message: 'Erro no servidor', error: error.message });
   }
 });
 
@@ -248,15 +131,53 @@ router.put('/tecnicos/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { nome, telefone, email } = req.body;
 
-    await db.execute(
+    console.log('Tentativa de atualização do técnico:', { id, nome, telefone, email });
+
+    const [result] = await db.execute(
       'UPDATE tecnicos SET nome = ?, telefone = ?, email = ? WHERE id = ?',
       [nome, telefone, email, id]
     );
 
+    console.log('Resultado da atualização:', result);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Técnico não encontrado' });
+    }
+
     res.json({ message: 'Técnico atualizado com sucesso' });
   } catch (error) {
     console.error('Erro ao atualizar técnico:', error);
-    res.status(500).json({ message: 'Erro ao atualizar técnico' });
+    res.status(500).json({ 
+      message: 'Erro ao atualizar técnico',
+      error: error.message 
+    });
+  }
+});
+
+// Excluir técnico
+router.delete('/tecnicos/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('Tentativa de exclusão do técnico:', id);
+
+    const [result] = await db.execute(
+      'DELETE FROM tecnicos WHERE id = ?',
+      [id]
+    );
+
+    console.log('Resultado da exclusão:', result);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Técnico não encontrado' });
+    }
+
+    res.json({ message: 'Técnico excluído com sucesso' });
+  } catch (error) {
+    console.error('Erro ao excluir técnico:', error);
+    res.status(500).json({ 
+      message: 'Erro ao excluir técnico',
+      error: error.message 
+    });
   }
 });
 
