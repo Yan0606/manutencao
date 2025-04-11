@@ -4,6 +4,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import TecnicoDashboard from './pages/TecnicoDashboard';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminProfile from './pages/AdminProfile';
 
 function App() {
   return (
@@ -20,6 +21,11 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route path="/admin/perfil" element={
+            <ProtectedRoute>
+              <AdminProfile />
+            </ProtectedRoute>
+          } />
           <Route path="/tecnico/acesso/:token" element={<TecnicoDashboard />} />
         </Routes>
       </div>

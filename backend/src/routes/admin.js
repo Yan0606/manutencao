@@ -182,4 +182,102 @@ router.delete('/tecnicos/:id', authMiddleware, async (req, res) => {
   }
 });
 
+// Atualizar perfil do administrador
+router.put('/perfil', authMiddleware, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const adminId = req.adminId;
+
+    // Verificar se o email já está em uso
+    const [existingAdmin] = await db.execute(
+      'SELECT id FROM admins WHERE email = ? AND id != ?',
+      [email, adminId]
+    );
+
+    if (existingAdmin.length > 0) {
+      return res.status(400).json({ message: 'Este email já está em uso' });
+    }
+
+    // Atualizar email
+    await db.execute(
+      'UPDATE admins SET email = ? WHERE id = ?',
+      [email, adminId]
+    );
+
+    // Buscar dados atualizados
+    const [admin] = await db.execute(
+      'SELECT id, nome, email, data_criacao FROM admins WHERE id = ?',
+      [adminId]
+    );
+
+    res.json(admin[0]);
+  } catch (error) {
+    console.error('Erro ao atualizar perfil:', error);
+    res.status(500).json({ message: 'Erro ao atualizar perfil' });
+  }
+});
+
+// Recuperar senha
+router.post('/recuperar-senha', async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    // Verificar se o email existe
+    const [admin] = await db.execute(
+      'SELECT id, nome FROM admins WHERE email = ?',
+      [email]
+    );
+
+    if (admin.length === 0) {
+      return res.status(404).json({ message: 'Email não encontrado' });
+    }
+
+    // Gerar token de recuperação
+    const token = jwt.sign(
+      { id: admin[0].id, type: 'password_reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // TODO: Implementar envio de email com o token
+    // Por enquanto, apenas retornamos o token
+    res.json({ 
+      message: 'Email de recuperação enviado com sucesso',
+      token // Em produção, não retornar o token
+    });
+  } catch (error) {
+    console.error('Erro ao processar recuperação de senha:', error);
+    res.status(500).json({ message: 'Erro ao processar recuperação de senha' });
+  }
+});
+
+// Redefinir senha
+router.post('/redefinir-senha', async (req, res) => {
+  try {
+    const { token, novaSenha } = req.body;
+
+    // Verificar token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    if (decoded.type !== 'password_reset') {
+      return res.status(400).json({ message: 'Token inválido' });
+    }
+
+    // Hash da nova senha
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(novaSenha, salt);
+
+    // Atualizar senha
+    await db.execute(
+      'UPDATE admins SET senha = ? WHERE id = ?',
+      [hashedPassword, decoded.id]
+    );
+
+    res.json({ message: 'Senha redefinida com sucesso' });
+  } catch (error) {
+    console.error('Erro ao redefinir senha:', error);
+    res.status(500).json({ message: 'Erro ao redefinir senha' });
+  }
+});
+
 module.exports = router; 
