@@ -110,7 +110,7 @@ export default function TecnicoDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{manutencao.titulo}</h3>
               <div className="flex flex-wrap gap-2 mb-3">
                 <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPrioridadeColor(manutencao.prioridade)}`}>
-                  {manutencao.prioridade.charAt(0).toUpperCase() + manutencao.prioridade.slice(1)}
+                  Prioridade {manutencao.prioridade.charAt(0).toUpperCase() + manutencao.prioridade.slice(1)}
                 </span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
                   {manutencao.setor}
@@ -216,7 +216,7 @@ export default function TecnicoDashboard() {
             </div>
             <div className="flex items-center">
               <div className="flex items-center space-x-3">
-                <span className="text-sm text-gray-500">Bem-vindo,</span>
+                <span className="text-sm text-gray-500 hidden [@media(min-width:499px)]:block">Bem-vindo,</span>
                 <span className="text-sm font-medium text-gray-900">{tecnico.nome}</span>
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                   <span className="w-2 h-2 mr-1 bg-green-400 rounded-full"></span>
