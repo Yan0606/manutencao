@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const mysql = require('mysql2');
+const initializeDatabase = require('./init-db');
 
 // Rotas
 const solicitacoesRoutes = require('./routes/solicitacoes');
@@ -38,6 +39,12 @@ app.use('/api/tecnicos', tecnicosRoutes);
 
 const PORT = process.env.PORT || 3001;
 
-app.listen(PORT, () => {
-  console.log(`Servidor rodando na porta ${PORT}`);
+// Inicializar o banco de dados antes de iniciar o servidor
+initializeDatabase().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}).catch(error => {
+  console.error('Falha ao inicializar o banco de dados:', error);
+  process.exit(1);
 }); 
