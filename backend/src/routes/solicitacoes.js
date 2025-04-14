@@ -4,11 +4,33 @@ const router = express.Router();
 // Criar nova solicitação
 router.post('/', async (req, res) => {
   try {
-    const { nome_solicitante, setor, titulo, local, descricao } = req.body;
+    const { 
+      nome_solicitante, 
+      setor, 
+      titulo, 
+      local, 
+      descricao,
+      dispositivo_info,
+      user_agent
+    } = req.body;
+    
+    const ip_address = req.ip || req.connection.remoteAddress;
+    
+    // Log para debug
+    console.log('Dados recebidos:', {
+      nome_solicitante,
+      setor,
+      titulo,
+      local,
+      descricao,
+      dispositivo_info,
+      user_agent,
+      ip_address
+    });
     
     const [result] = await global.db.execute(
-      'INSERT INTO solicitacoes (nome_solicitante, setor, titulo, local, descricao) VALUES (?, ?, ?, ?, ?)',
-      [nome_solicitante, setor, titulo, local, descricao]
+      'INSERT INTO solicitacoes (nome_solicitante, setor, titulo, local, descricao, dispositivo_info, user_agent, ip_address) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [nome_solicitante, setor, titulo, local, descricao, JSON.stringify(dispositivo_info), user_agent, ip_address]
     );
 
     res.status(201).json({

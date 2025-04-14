@@ -31,6 +31,7 @@ router.get('/acesso/:token', validarTokenTecnico, async (req, res) => {
 // Listar manutenções do técnico
 router.get('/manutencoes/:token', validarTokenTecnico, async (req, res) => {
   try {
+    console.log('Buscando manutenções...');
     const [manutencoes] = await global.db.execute(
       `SELECT 
         id, titulo, descricao, local, setor, prioridade, status, 
@@ -39,33 +40,27 @@ router.get('/manutencoes/:token', validarTokenTecnico, async (req, res) => {
        WHERE status IN ('aprovada', 'em_andamento', 'concluida')
        ORDER BY 
          CASE 
-           WHEN status = 'aprovada' AND prioridade = 'alta' THEN 1
-           WHEN status = 'aprovada' AND prioridade = 'media' THEN 2
-           WHEN status = 'aprovada' AND prioridade = 'baixa' THEN 3
-           WHEN status = 'em_andamento' THEN 4
-           WHEN status = 'concluida' THEN 5
+           WHEN prioridade = 'alta' THEN 1
+           WHEN prioridade = 'media' THEN 2
+           WHEN prioridade = 'baixa' THEN 3
+           ELSE 4
          END,
          data_criacao DESC`
     );
 
-    // Converter o status 'aprovada' para 'a_fazer'
-    const manutencoesMapeadas = manutencoes.map(m => ({
-      id: m.id,
-      titulo: m.titulo,
-      descricao: m.descricao,
-      local: m.local,
-      setor: m.setor,
-      prioridade: m.prioridade,
-      status: m.status === 'aprovada' ? 'a_fazer' : m.status,
-      data_criacao: m.data_criacao
-    }));
+    console.log('Manutenções encontradas:', manutencoes);
 
-    // Agrupar por status
+    // Agrupar manutenções por status
     const resultado = {
-      a_fazer: manutencoesMapeadas.filter(m => m.status === 'a_fazer') || [],
-      em_andamento: manutencoesMapeadas.filter(m => m.status === 'em_andamento') || [],
-      concluida: manutencoesMapeadas.filter(m => m.status === 'concluida') || []
+      a_fazer: manutencoes.filter(m => m.status === 'aprovada').map(m => ({
+        ...m,
+        status: 'a_fazer'
+      })),
+      em_andamento: manutencoes.filter(m => m.status === 'em_andamento'),
+      concluida: manutencoes.filter(m => m.status === 'concluida')
     };
+
+    console.log('Resultado agrupado:', resultado);
 
     res.json(resultado);
   } catch (error) {
@@ -80,18 +75,64 @@ router.patch('/manutencoes/:token/:id/status', validarTokenTecnico, async (req, 
     const { id } = req.params;
     const { status } = req.body;
 
-    // Mapear status do frontend para o banco
-    const statusBanco = status === 'a_fazer' ? 'aprovada' : status;
+    console.log('Tentativa de atualização de status:', { id, status });
 
-    await global.db.execute(
-      'UPDATE solicitacoes SET status = ? WHERE id = ?',
-      [statusBanco, id]
+    // Verificar se a solicitação existe
+    const [solicitacao] = await global.db.execute(
+      'SELECT * FROM solicitacoes WHERE id = ?',
+      [id]
     );
 
-    res.json({ message: 'Status da manutenção atualizado com sucesso' });
+    console.log('Solicitação encontrada:', solicitacao[0]);
+
+    if (solicitacao.length === 0) {
+      console.log('Solicitação não encontrada:', id);
+      return res.status(404).json({ message: 'Solicitação não encontrada' });
+    }
+
+    // Mapear status do frontend para o banco
+    let statusBanco = 'aprovada';
+    if (status === 'em_andamento') {
+      statusBanco = 'em_andamento';
+    } else if (status === 'concluida') {
+      statusBanco = 'concluida';
+    }
+    
+    console.log('Status mapeado:', { original: status, mapeado: statusBanco });
+
+    // Atualizar o status
+    console.log('Executando query de atualização...');
+    const query = 'UPDATE solicitacoes SET status = ? WHERE id = ?';
+    const values = [statusBanco, id];
+    console.log('Query:', query);
+    console.log('Values:', values);
+
+    const [result] = await global.db.execute(query, values);
+    console.log('Resultado da atualização:', result);
+
+    if (result.affectedRows === 0) {
+      console.log('Nenhuma linha afetada');
+      return res.status(404).json({ message: 'Solicitação não encontrada' });
+    }
+
+    // Buscar a solicitação atualizada para confirmar
+    const [solicitacaoAtualizada] = await global.db.execute(
+      'SELECT * FROM solicitacoes WHERE id = ?',
+      [id]
+    );
+    console.log('Solicitação após atualização:', solicitacaoAtualizada[0]);
+
+    res.json({ 
+      message: 'Status da manutenção atualizado com sucesso',
+      solicitacao: solicitacaoAtualizada[0]
+    });
   } catch (error) {
-    console.error('Erro ao atualizar status:', error);
-    res.status(500).json({ message: 'Erro ao atualizar status da manutenção' });
+    console.error('Erro detalhado ao atualizar status:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: 'Erro ao atualizar status da manutenção',
+      error: error.message 
+    });
   }
 });
 

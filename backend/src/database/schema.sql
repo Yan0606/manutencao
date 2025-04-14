@@ -8,11 +8,24 @@ CREATE TABLE IF NOT EXISTS solicitacoes (
     titulo VARCHAR(100) NOT NULL,
     local VARCHAR(100) NOT NULL,
     descricao TEXT,
-    status ENUM('pendente', 'aprovada', 'reprovada', 'concluida') DEFAULT 'pendente',
+    status ENUM('pendente', 'aprovada', 'reprovada', 'em_andamento', 'concluida') DEFAULT 'pendente',
     prioridade ENUM('alta', 'media', 'baixa') DEFAULT NULL,
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    data_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    dispositivo_info JSON DEFAULT NULL,
+    user_agent VARCHAR(255) DEFAULT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL
 );
+
+-- Adicionar colunas se não existirem
+ALTER TABLE solicitacoes 
+ADD COLUMN IF NOT EXISTS dispositivo_info JSON DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS user_agent VARCHAR(255) DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45) DEFAULT NULL;
+
+-- Atualizar ENUM de status se a tabela já existir
+ALTER TABLE solicitacoes MODIFY COLUMN status 
+ENUM('pendente', 'aprovada', 'reprovada', 'em_andamento', 'concluida') DEFAULT 'pendente';
 
 CREATE TABLE IF NOT EXISTS admins (
     id INT AUTO_INCREMENT PRIMARY KEY,

@@ -13,6 +13,22 @@ interface Solicitacao {
   prioridade: string;
   data_criacao: string;
   data_conclusao?: string;
+  dispositivo_info?: {
+    platform: string;
+    userAgent: string;
+    language: string;
+    screenWidth: number;
+    screenHeight: number;
+    devicePixelRatio: number;
+    touchPoints: number;
+    connection?: {
+      effectiveType: string;
+      rtt: number;
+      downlink: number;
+    };
+  };
+  user_agent?: string;
+  ip_address?: string;
 }
 
 interface Tecnico {
@@ -23,6 +39,9 @@ interface Tecnico {
   token: string;
   ativo: boolean;
 }
+
+// Configuração da API
+const API_URL = 'http://172.16.100.98:3001';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -37,6 +56,8 @@ export default function AdminDashboard() {
   const [tecnicoEmEdicao, setTecnicoEmEdicao] = useState<Tecnico | null>(null);
   const [mensagem, setMensagem] = useState<{ tipo: 'sucesso' | 'erro'; texto: string } | null>(null);
   const [prioridadeSelecionada, setPrioridadeSelecionada] = useState<{ [key: number]: string }>({});
+  const [mostrarInfoDispositivo, setMostrarInfoDispositivo] = useState<number | null>(null);
+  const [expandedDevices, setExpandedDevices] = useState<{[key: number]: boolean}>({});
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -54,8 +75,8 @@ export default function AdminDashboard() {
       const config = { headers: { Authorization: `Bearer ${token}` } };
 
       const [solicitacoesRes, tecnicosRes] = await Promise.all([
-        axios.get('http://localhost:3001/api/solicitacoes', config),
-        axios.get('http://localhost:3001/api/admin/tecnicos', config)
+        axios.get(`${API_URL}/api/solicitacoes`, config),
+        axios.get(`${API_URL}/api/admin/tecnicos`, config)
       ]);
 
       setSolicitacoes(solicitacoesRes.data);
@@ -74,7 +95,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       await axios.patch(
-        `http://localhost:3001/api/admin/solicitacoes/${id}`,
+        `${API_URL}/api/admin/solicitacoes/${id}`,
         { status: 'aprovada', prioridade: prioridadeSelecionada[id] },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -89,16 +110,46 @@ export default function AdminDashboard() {
   const handleReprovarSolicitacao = async (id: number) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.patch(
-        `http://localhost:3001/api/admin/solicitacoes/${id}`,
+      if (!token) {
+        setMensagem({ tipo: 'erro', texto: 'Token de autenticação não encontrado' });
+        return;
+      }
+
+      console.log('Tentando reprovar solicitação:', id);
+
+      const response = await axios.patch(
+        `${API_URL}/api/admin/solicitacoes/${id}`,
         { status: 'reprovada' },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
       );
+
+      console.log('Resposta da reprovação:', response.data);
       
       setMensagem({ tipo: 'sucesso', texto: 'Solicitação reprovada' });
       carregarDados();
     } catch (error) {
-      setMensagem({ tipo: 'erro', texto: 'Erro ao reprovar solicitação' });
+      console.error('Erro ao reprovar solicitação:', error);
+      if (axios.isAxiosError(error)) {
+        if (error.response) {
+          console.error('Detalhes do erro:', error.response.data);
+          setMensagem({ 
+            tipo: 'erro', 
+            texto: error.response.data.message || 'Erro ao reprovar solicitação' 
+          });
+        } else {
+          setMensagem({ 
+            tipo: 'erro', 
+            texto: 'Erro de conexão com o servidor' 
+          });
+        }
+      } else {
+        setMensagem({ tipo: 'erro', texto: 'Erro ao reprovar solicitação' });
+      }
     }
   };
 
@@ -107,7 +158,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
-        'http://localhost:3001/api/admin/tecnicos',
+        `${API_URL}/api/admin/tecnicos`,
         novoTecnico,
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -130,7 +181,7 @@ export default function AdminDashboard() {
     try {
       const token = localStorage.getItem('token');
       await axios.put(
-        `http://localhost:3001/api/admin/tecnicos/${tecnicoEmEdicao.id}`,
+        `${API_URL}/api/admin/tecnicos/${tecnicoEmEdicao.id}`,
         {
           nome: tecnicoEmEdicao.nome,
           telefone: tecnicoEmEdicao.telefone,
@@ -152,7 +203,7 @@ export default function AdminDashboard() {
       try {
         const token = localStorage.getItem('token');
         await axios.delete(
-          `http://localhost:3001/api/admin/tecnicos/${id}`,
+          `${API_URL}/api/admin/tecnicos/${id}`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
@@ -216,8 +267,90 @@ export default function AdminDashboard() {
     const solicitacoesEmAndamento = solicitacoes.filter(s => s.status === 'em_andamento');
     const solicitacoesConcluidas = solicitacoes.filter(s => s.status === 'concluida');
 
-    const getPrioridadeDisplay = (prioridade: string) => {
+    const getPrioridadeDisplay = (prioridade: string | null) => {
+      if (!prioridade) return 'Não definida';
       return prioridade.charAt(0).toUpperCase() + prioridade.slice(1);
+    };
+
+    const renderInfoDispositivo = (solicitacao: Solicitacao) => {
+      if (!solicitacao.dispositivo_info && !solicitacao.ip_address) return null;
+
+      const isExpanded = expandedDevices[solicitacao.id] || false;
+      const toggleExpand = () => {
+        setExpandedDevices(prev => ({
+          ...prev,
+          [solicitacao.id]: !prev[solicitacao.id]
+        }));
+      };
+
+      // Filtra apenas informações não vazias
+      const getDeviceInfo = () => {
+        const info: { label: string; value: string }[] = [];
+        
+        if (solicitacao.ip_address) {
+          info.push({ label: 'IP', value: solicitacao.ip_address });
+        }
+
+        if (solicitacao.dispositivo_info) {
+          const { platform, screenWidth, screenHeight, connection } = solicitacao.dispositivo_info;
+          
+          if (platform) {
+            info.push({ label: 'Plataforma', value: platform });
+          }
+          if (screenWidth && screenHeight) {
+            info.push({ label: 'Resolução', value: `${screenWidth}x${screenHeight}` });
+          }
+          if (connection?.effectiveType) {
+            info.push({ label: 'Conexão', value: connection.effectiveType });
+          }
+        }
+
+        return info;
+      };
+
+      const deviceInfo = getDeviceInfo();
+      if (deviceInfo.length === 0) return null;
+
+      return (
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+          <div className="flex justify-between items-center">
+            <h4 className="font-medium text-sm text-gray-700">
+              Informações do Dispositivo
+            </h4>
+            {deviceInfo.length > 1 && (
+              <button
+                onClick={toggleExpand}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                {isExpanded ? (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+          <div className="text-sm text-gray-600 space-y-1 mt-2">
+            {/* Sempre mostra o IP */}
+            {deviceInfo[0] && (
+              <p>
+                <span className="font-medium">{deviceInfo[0].label}:</span> {deviceInfo[0].value}
+              </p>
+            )}
+            
+            {/* Mostra informações adicionais quando expandido */}
+            {isExpanded && deviceInfo.slice(1).map((info, index) => (
+              <p key={index}>
+                <span className="font-medium">{info.label}:</span> {info.value}
+              </p>
+            ))}
+          </div>
+        </div>
+      );
     };
 
     return (
@@ -230,45 +363,58 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesPendentes.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <h3 className="font-medium">{solicitacao.titulo}</h3>
-                <p className="text-sm text-gray-500">
-                  Solicitante: {solicitacao.nome_solicitante} - Setor: {solicitacao.setor}
-                </p>
-                <p className="text-sm text-gray-500">Local: {solicitacao.local}</p>
-                {solicitacao.descricao && (
-                  <p className="text-sm text-gray-500 mt-2">{solicitacao.descricao}</p>
-                )}
-                <div className="mt-4 flex flex-col space-y-3">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium">{solicitacao.titulo}</h3>
+                  <span className="text-sm text-gray-500">
+                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.setor}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.local}
+                  </span>
+                </div>
+                <div className="flex gap-2">
                   <select
-                    className="text-sm border rounded p-2 w-full"
-                    onChange={(e) => setPrioridadeSelecionada({ ...prioridadeSelecionada, [solicitacao.id]: e.target.value })}
                     value={prioridadeSelecionada[solicitacao.id] || ''}
+                    onChange={(e) => setPrioridadeSelecionada({
+                      ...prioridadeSelecionada,
+                      [solicitacao.id]: e.target.value
+                    })}
+                    className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Selecione a prioridade</option>
                     <option value="alta">Alta</option>
                     <option value="media">Média</option>
                     <option value="baixa">Baixa</option>
                   </select>
-                  <div className="flex space-x-3">
-                    <button
-                      onClick={() => handleAprovarSolicitacao(solicitacao.id)}
-                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={!prioridadeSelecionada[solicitacao.id]}
-                    >
-                      Aprovar
-                    </button>
-                    <button
-                      onClick={() => handleReprovarSolicitacao(solicitacao.id)}
-                      className="flex-1 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm"
-                    >
-                      Reprovar
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleAprovarSolicitacao(solicitacao.id)}
+                    disabled={!prioridadeSelecionada[solicitacao.id]}
+                    className={`px-3 py-1 text-sm font-medium rounded-md ${
+                      prioridadeSelecionada[solicitacao.id]
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    Aprovar
+                  </button>
+                  <button
+                    onClick={() => handleReprovarSolicitacao(solicitacao.id)}
+                    className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                  >
+                    Reprovar
+                  </button>
                 </div>
+                {renderInfoDispositivo(solicitacao)}
               </div>
             ))}
             {solicitacoesPendentes.length === 0 && (
-              <p className="text-sm text-gray-500 italic">Nenhuma solicitação pendente</p>
+              <p className="text-sm text-gray-500 text-center">Nenhuma solicitação pendente</p>
             )}
           </div>
         </div>
@@ -281,27 +427,37 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesEmAndamento.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <h3 className="font-medium">{solicitacao.titulo}</h3>
-                <p className="text-sm text-gray-500">
-                  Solicitante: {solicitacao.nome_solicitante} - Setor: {solicitacao.setor}
-                </p>
-                <p className="text-sm text-gray-500">Local: {solicitacao.local}</p>
-                {solicitacao.descricao && (
-                  <p className="text-sm text-gray-500 mt-2">{solicitacao.descricao}</p>
-                )}
-                <p className="text-sm font-medium mt-2">
-                  Prioridade: <span className={
-                    solicitacao.prioridade === 'alta' ? 'text-red-600' :
-                    solicitacao.prioridade === 'media' ? 'text-yellow-600' :
-                    'text-green-600'
-                  }>
-                    {getPrioridadeDisplay(solicitacao.prioridade)}
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium">{solicitacao.titulo}</h3>
+                  <span className="text-sm text-gray-500">
+                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
                   </span>
-                </p>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.setor}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.local}
+                  </span>
+                  {solicitacao.prioridade && (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      solicitacao.prioridade === 'alta' 
+                        ? 'bg-red-100 text-red-800' 
+                        : solicitacao.prioridade === 'media'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      Prioridade {getPrioridadeDisplay(solicitacao.prioridade)}
+                    </span>
+                  )}
+                </div>
+                {renderInfoDispositivo(solicitacao)}
               </div>
             ))}
             {solicitacoesEmAndamento.length === 0 && (
-              <p className="text-sm text-gray-500 italic">Nenhuma solicitação em andamento</p>
+              <p className="text-sm text-gray-500 text-center">Nenhuma solicitação em andamento</p>
             )}
           </div>
         </div>
@@ -314,30 +470,37 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesConcluidas.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <h3 className="font-medium">{solicitacao.titulo}</h3>
-                <p className="text-sm text-gray-500">
-                  Solicitante: {solicitacao.nome_solicitante} - Setor: {solicitacao.setor}
-                </p>
-                <p className="text-sm text-gray-500">Local: {solicitacao.local}</p>
-                {solicitacao.descricao && (
-                  <p className="text-sm text-gray-500 mt-2">{solicitacao.descricao}</p>
-                )}
-                <p className="text-sm font-medium mt-2">
-                  Prioridade: <span className={
-                    solicitacao.prioridade === 'alta' ? 'text-red-600' :
-                    solicitacao.prioridade === 'media' ? 'text-yellow-600' :
-                    'text-green-600'
-                  }>
-                    {getPrioridadeDisplay(solicitacao.prioridade)}
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-medium">{solicitacao.titulo}</h3>
+                  <span className="text-sm text-gray-500">
+                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
                   </span>
-                </p>
-                <p className="text-sm text-gray-500 mt-2">
-                  Concluída em: {solicitacao.data_conclusao ? new Date(solicitacao.data_conclusao).toLocaleDateString() : 'Data não disponível'}
-                </p>
+                </div>
+                <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
+                <div className="flex flex-wrap gap-2">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.setor}
+                  </span>
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                    {solicitacao.local}
+                  </span>
+                  {solicitacao.prioridade && (
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      solicitacao.prioridade === 'alta' 
+                        ? 'bg-red-100 text-red-800' 
+                        : solicitacao.prioridade === 'media'
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      Prioridade {getPrioridadeDisplay(solicitacao.prioridade)}
+                    </span>
+                  )}
+                </div>
+                {renderInfoDispositivo(solicitacao)}
               </div>
             ))}
             {solicitacoesConcluidas.length === 0 && (
-              <p className="text-sm text-gray-500 italic">Nenhuma solicitação concluída</p>
+              <p className="text-sm text-gray-500 text-center">Nenhuma solicitação concluída</p>
             )}
           </div>
         </div>

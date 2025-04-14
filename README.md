@@ -38,29 +38,49 @@ O projeto está dividido em duas partes principais:
     └── package.json # Dependências do frontend
 ```
 
-## 🔄 Rotas da API
+## 🔄 Fluxo do Sistema
+
+1. **Solicitação de Manutenção**
+   - Usuário preenche formulário com detalhes do problema
+   - Sistema registra informações do dispositivo e IP
+   - Status inicial: 'pendente'
+
+2. **Aprovação pelo Administrador**
+   - Admin avalia a solicitação
+   - Define a prioridade (alta/média/baixa)
+   - Aprova ou reprova a solicitação
+   - Se aprovada, aparece como "A Fazer" para os técnicos
+
+3. **Execução pelo Técnico**
+   - Técnico visualiza solicitações "A Fazer"
+   - Pode iniciar a manutenção (status: 'em_andamento')
+   - Pode concluir a manutenção (status: 'concluida')
+   - Pode retornar para "A Fazer" se necessário
+
+## 🛠️ Rotas da API
 
 ### Autenticação e Administração (`/admin`)
 - POST `/admin/login` - Login de administrador
 - POST `/admin/register` - Registro de novo administrador
 - GET `/admin/profile` - Perfil do administrador
-- PUT `/admin/update` - Atualização de dados do administrador
-- PUT `/admin/update-password` - Atualização de senha
+- PUT `/admin/profile` - Atualização de dados do administrador
+- PATCH `/admin/solicitacoes/:id` - Aprovar/reprovar solicitação (inclui definição de prioridade)
 
 ### Técnicos (`/tecnicos`)
-- GET `/tecnicos` - Lista todos os técnicos
-- POST `/tecnicos` - Cria novo técnico
-- PUT `/tecnicos/:id` - Atualiza dados do técnico
-- DELETE `/tecnicos/:id` - Remove técnico
-- GET `/tecnicos/:id` - Obtém detalhes de um técnico
+- GET `/tecnicos/acesso/:token` - Validar acesso do técnico
+- GET `/tecnicos/manutencoes/:token` - Listar manutenções do técnico
+- PATCH `/tecnicos/manutencoes/:token/:id/status` - Atualizar status da manutenção
 
 ### Solicitações (`/solicitacoes`)
-- GET `/solicitacoes` - Lista todas as solicitações
-- POST `/solicitacoes` - Cria nova solicitação
-- PUT `/solicitacoes/:id` - Atualiza status da solicitação
-- GET `/solicitacoes/:id` - Obtém detalhes de uma solicitação
+- POST `/solicitacoes` - Criar nova solicitação
+- GET `/solicitacoes` - Listar solicitações (com filtros)
 
-## 🛠️ Instalação e Execução
+## ⚙️ Instalação e Execução
+
+### Pré-requisitos
+- Node.js 14+
+- MySQL 5.7+
+- NPM ou Yarn
 
 ### Backend
 1. Navegue até a pasta do backend:
@@ -71,10 +91,21 @@ O projeto está dividido em duas partes principais:
    ```bash
    npm install
    ```
-3. Configure as variáveis de ambiente:
+3. Configure o banco de dados:
+   ```bash
+   mysql -u root < src/database/schema.sql
+   ```
+4. Configure as variáveis de ambiente:
    - Copie `.env.example` para `.env`
-   - Preencha as variáveis necessárias
-4. Inicie o servidor:
+   - Configure as variáveis:
+     ```
+     DB_HOST=localhost
+     DB_USER=root
+     DB_PASSWORD=
+     DB_NAME=sistema_manutencao
+     JWT_SECRET=sua_chave_secreta
+     ```
+5. Inicie o servidor:
    ```bash
    npm run dev
    ```
@@ -88,7 +119,13 @@ O projeto está dividido em duas partes principais:
    ```bash
    npm install
    ```
-3. Inicie a aplicação:
+3. Configure o arquivo de ambiente:
+   - Copie `.env.example` para `.env`
+   - Configure a URL da API:
+     ```
+     REACT_APP_API_URL=http://seu-ip:3001
+     ```
+4. Inicie a aplicação:
    ```bash
    npm start
    ```
@@ -99,27 +136,27 @@ O projeto está dividido em duas partes principais:
 - CORS configurado para segurança
 - Variáveis sensíveis em arquivo .env
 
-## 📝 Funcionalidades
+## 📱 Funcionalidades
+
+### Painel do Administrador
+- Aprovação/reprovação de solicitações
+- Definição de prioridades
 - Gerenciamento de técnicos
-- Controle de solicitações de manutenção
-- Sistema de autenticação para administradores
-- Interface moderna e responsiva
-- Dashboard administrativo
+- Visualização de todas as solicitações
 
-## Requisitos
+### Painel do Técnico
+- Visualização de manutenções por status
+- Atualização de status das manutenções
+- Interface intuitiva com cores por prioridade
+- Informações detalhadas de cada solicitação
 
-- Node.js 14+ instalado
-- MySQL 5.7+ instalado e rodando
-- NPM ou Yarn
+### Solicitação de Manutenção
+- Formulário intuitivo
+- Captura automática de informações do dispositivo
+- Feedback imediato após envio
+- Validação de campos
 
-## Configuração do Banco de Dados
-
-1. Crie um banco de dados MySQL
-2. Execute o script SQL localizado em `backend/src/database/schema.sql`
-
-## Desenvolvimento
-
-Para contribuir com o projeto:
+## 🤝 Contribuindo
 
 1. Faça um fork do repositório
 2. Crie uma branch para sua feature (`git checkout -b feature/nome-da-feature`)

@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import axios from 'axios';
 
+// Configuração da API
+const API_URL = 'http://172.16.100.98:3001';
+
 export default function SolicitacaoManutencao() {
   const [formData, setFormData] = useState({
     nome_solicitante: '',
@@ -22,13 +25,38 @@ export default function SolicitacaoManutencao() {
     }));
   };
 
+  const getDeviceInfo = () => {
+    const deviceInfo = {
+      platform: navigator.platform,
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      screenWidth: window.screen.width,
+      screenHeight: window.screen.height,
+      devicePixelRatio: window.devicePixelRatio,
+      touchPoints: navigator.maxTouchPoints,
+      connection: (navigator as any).connection ? {
+        effectiveType: (navigator as any).connection.effectiveType,
+        rtt: (navigator as any).connection.rtt,
+        downlink: (navigator as any).connection.downlink
+      } : null
+    };
+    return deviceInfo;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setEnviando(true);
     setMensagem(null);
 
     try {
-      await axios.post('http://localhost:3001/api/solicitacoes', formData);
+      const deviceInfo = getDeviceInfo();
+      const dataToSend = {
+        ...formData,
+        dispositivo_info: deviceInfo,
+        user_agent: navigator.userAgent
+      };
+
+      await axios.post(`${API_URL}/api/solicitacoes`, dataToSend);
       setMensagem({
         tipo: 'sucesso',
         texto: 'Solicitação enviada com sucesso! Nossa equipe irá analisar seu pedido.'
@@ -41,6 +69,7 @@ export default function SolicitacaoManutencao() {
         descricao: ''
       });
     } catch (error) {
+      console.error('Erro ao enviar solicitação:', error);
       setMensagem({
         tipo: 'erro',
         texto: 'Erro ao enviar solicitação. Por favor, tente novamente.'

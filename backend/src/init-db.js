@@ -22,7 +22,14 @@ async function initializeDatabase() {
         // Execute each statement
         for (const statement of statements) {
             if (statement.trim()) {
-                await connection.query(statement);
+                try {
+                    await connection.query(statement);
+                } catch (error) {
+                    // Ignore errors about columns already existing
+                    if (!error.message.includes('Duplicate column name')) {
+                        console.error('Error executing statement:', error);
+                    }
+                }
             }
         }
 

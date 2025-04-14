@@ -114,15 +114,70 @@ router.patch('/solicitacoes/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { status, prioridade } = req.body;
 
-    await db.execute(
-      'UPDATE solicitacoes SET status = ?, prioridade = ? WHERE id = ?',
-      [status, prioridade, id]
+    console.log('Dados recebidos:', { id, status, prioridade, body: req.body });
+
+    // Validar o status
+    const statusValidos = ['pendente', 'aprovada', 'reprovada', 'concluida'];
+    if (!statusValidos.includes(status)) {
+      console.log('Status inválido:', status);
+      return res.status(400).json({ message: 'Status inválido' });
+    }
+
+    // Validar a prioridade se o status for 'aprovada'
+    if (status === 'aprovada') {
+      const prioridadesValidas = ['alta', 'media', 'baixa'];
+      if (!prioridade || !prioridadesValidas.includes(prioridade)) {
+        console.log('Prioridade inválida ou não fornecida:', prioridade);
+        return res.status(400).json({ message: 'Prioridade é obrigatória ao aprovar uma solicitação' });
+      }
+    }
+
+    // Verificar se a solicitação existe
+    const [rows] = await db.execute(
+      'SELECT * FROM solicitacoes WHERE id = ?',
+      [id]
     );
 
-    res.json({ message: 'Solicitação atualizada com sucesso' });
+    console.log('Solicitação encontrada:', rows[0]);
+
+    if (rows.length === 0) {
+      console.log('Solicitação não encontrada:', id);
+      return res.status(404).json({ message: 'Solicitação não encontrada' });
+    }
+
+    // Atualizar status e prioridade
+    console.log('Executando query de atualização...');
+    const query = 'UPDATE solicitacoes SET status = ?, prioridade = ? WHERE id = ?';
+    const values = [status, prioridade, id];
+    console.log('Query:', query);
+    console.log('Values:', values);
+
+    const [result] = await db.execute(query, values);
+    console.log('Resultado da atualização:', result);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ message: 'Solicitação não encontrada' });
+    }
+
+    // Buscar a solicitação atualizada para confirmar
+    const [solicitacaoAtualizada] = await db.execute(
+      'SELECT * FROM solicitacoes WHERE id = ?',
+      [id]
+    );
+    console.log('Solicitação após atualização:', solicitacaoAtualizada[0]);
+
+    res.json({ 
+      message: 'Solicitação atualizada com sucesso',
+      solicitacao: solicitacaoAtualizada[0]
+    });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erro ao atualizar solicitação' });
+    console.error('Erro detalhado:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: 'Erro ao atualizar solicitação',
+      error: error.message,
+      stack: error.stack
+    });
   }
 });
 

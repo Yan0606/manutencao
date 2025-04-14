@@ -2,13 +2,16 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
+// Configuração da API
+const API_URL = 'http://172.16.100.98:3001';
+
 interface Manutencao {
   id: number;
   titulo: string;
   local: string;
   setor: string;
   descricao: string;
-  prioridade: 'alta' | 'media' | 'baixa';
+  prioridade: 'alta' | 'media' | 'baixa' | null;
   status: 'a_fazer' | 'em_andamento' | 'concluida';
   data_criacao: string;
 }
@@ -38,7 +41,7 @@ export default function TecnicoDashboard() {
 
     const validarAcesso = async () => {
       try {
-        const response = await axios.get(`http://localhost:3001/api/tecnicos/acesso/${token}`);
+        const response = await axios.get(`${API_URL}/api/tecnicos/acesso/${token}`);
         setTecnico(response.data);
         await carregarManutencoes();
       } catch (error) {
@@ -51,7 +54,7 @@ export default function TecnicoDashboard() {
 
   const carregarManutencoes = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/api/tecnicos/manutencoes/${token}`);
+      const response = await axios.get(`${API_URL}/api/tecnicos/manutencoes/${token}`);
       console.log('Dados recebidos:', response.data);
       setManutencoes(response.data);
     } catch (error) {
@@ -65,9 +68,13 @@ export default function TecnicoDashboard() {
 
   const handleAtualizarStatus = async (id: number, novoStatus: 'a_fazer' | 'em_andamento' | 'concluida') => {
     try {
-      await axios.patch(`http://localhost:3001/api/tecnicos/manutencoes/${token}/${id}/status`, {
+      console.log('Atualizando status:', { id, novoStatus });
+      
+      const response = await axios.patch(`${API_URL}/api/tecnicos/manutencoes/${token}/${id}/status`, {
         status: novoStatus
       });
+
+      console.log('Resposta da atualização:', response.data);
       
       setMensagem({ 
         tipo: 'sucesso', 
@@ -89,8 +96,10 @@ export default function TecnicoDashboard() {
   };
 
   const renderManutencao = (manutencao: Manutencao) => {
-    const getPrioridadeColor = (prioridade: string) => {
-      switch (prioridade) {
+    const getPrioridadeColor = (prioridade: string | null) => {
+      if (!prioridade) return 'text-gray-600 bg-gray-50 border-gray-100';
+      
+      switch (prioridade.toLowerCase()) {
         case 'alta':
           return 'text-red-600 bg-red-50 border-red-100';
         case 'media':
@@ -109,9 +118,11 @@ export default function TecnicoDashboard() {
             <div className="flex-1">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">{manutencao.titulo}</h3>
               <div className="flex flex-wrap gap-2 mb-3">
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPrioridadeColor(manutencao.prioridade)}`}>
-                  Prioridade {manutencao.prioridade.charAt(0).toUpperCase() + manutencao.prioridade.slice(1)}
-                </span>
+                {manutencao.prioridade && (
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getPrioridadeColor(manutencao.prioridade)}`}>
+                    Prioridade {manutencao.prioridade.charAt(0).toUpperCase() + manutencao.prioridade.slice(1)}
+                  </span>
+                )}
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-600 border border-blue-100">
                   {manutencao.setor}
                 </span>
