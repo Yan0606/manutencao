@@ -283,72 +283,98 @@ export default function AdminDashboard() {
         }));
       };
 
-      // Filtra apenas informações não vazias
-      const getDeviceInfo = () => {
-        const info: { label: string; value: string }[] = [];
-        
-        if (solicitacao.ip_address) {
-          info.push({ label: 'IP', value: solicitacao.ip_address });
-        }
-
-        if (solicitacao.dispositivo_info) {
-          const { platform, screenWidth, screenHeight, connection } = solicitacao.dispositivo_info;
-          
-          if (platform) {
-            info.push({ label: 'Plataforma', value: platform });
-          }
-          if (screenWidth && screenHeight) {
-            info.push({ label: 'Resolução', value: `${screenWidth}x${screenHeight}` });
-          }
-          if (connection?.effectiveType) {
-            info.push({ label: 'Conexão', value: connection.effectiveType });
-          }
-        }
-
-        return info;
-      };
-
-      const deviceInfo = getDeviceInfo();
-      if (deviceInfo.length === 0) return null;
-
       return (
-        <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-          <div className="flex justify-between items-center">
-            <h4 className="font-medium text-sm text-gray-700">
-              Informações do Dispositivo
+        <div className="mt-4 border border-gray-100 rounded-lg">
+          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-t-lg border-b border-gray-100">
+            <h4 className="font-medium text-sm text-gray-700 flex items-center">
+              <svg className="w-4 h-4 mr-1.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              Informações da Solicitação
             </h4>
-            {deviceInfo.length > 1 && (
-              <button
-                onClick={toggleExpand}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                {isExpanded ? (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
-              </button>
-            )}
+            <button
+              onClick={toggleExpand}
+              className="p-1 hover:bg-gray-200 rounded-full transition-colors duration-200"
+              title={isExpanded ? "Mostrar menos" : "Mostrar mais"}
+            >
+              <svg className="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" />
+              </svg>
+            </button>
           </div>
-          <div className="text-sm text-gray-600 space-y-1 mt-2">
-            {/* Sempre mostra o IP */}
-            {deviceInfo[0] && (
-              <p>
-                <span className="font-medium">{deviceInfo[0].label}:</span> {deviceInfo[0].value}
-              </p>
-            )}
-            
-            {/* Mostra informações adicionais quando expandido */}
-            {isExpanded && deviceInfo.slice(1).map((info, index) => (
-              <p key={index}>
-                <span className="font-medium">{info.label}:</span> {info.value}
-              </p>
-            ))}
-          </div>
+          
+          {isExpanded && (
+            <div className="p-4 space-y-3 text-sm">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">Informações do Solicitante</h5>
+                  <div className="space-y-2">
+                    <p className="flex items-center text-gray-600">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="font-medium mr-2">Nome:</span> {solicitacao.nome_solicitante}
+                    </p>
+                    <p className="flex items-center text-gray-600">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                      </svg>
+                      <span className="font-medium mr-2">Setor:</span> {solicitacao.setor}
+                    </p>
+                    <p className="flex items-center text-gray-600">
+                      <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="font-medium mr-2">Local:</span> {solicitacao.local}
+                    </p>
+                  </div>
+                </div>
+                
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">Informações do Dispositivo</h5>
+                  <div className="space-y-2">
+                    {solicitacao.ip_address && (
+                      <p className="flex items-center text-gray-600">
+                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                        </svg>
+                        <span className="font-medium mr-2">IP:</span> {solicitacao.ip_address}
+                      </p>
+                    )}
+                    {solicitacao.dispositivo_info && (
+                      <>
+                        {solicitacao.dispositivo_info.platform && (
+                          <p className="flex items-center text-gray-600">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                            </svg>
+                            <span className="font-medium mr-2">Sistema:</span> {solicitacao.dispositivo_info.platform}
+                          </p>
+                        )}
+                        {solicitacao.dispositivo_info.screenWidth && solicitacao.dispositivo_info.screenHeight && (
+                          <p className="flex items-center text-gray-600">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8v8a4 4 0 004 4h8a4 4 0 004-4V8m-4-4v8m-12-4h16" />
+                            </svg>
+                            <span className="font-medium mr-2">Resolução:</span> {solicitacao.dispositivo_info.screenWidth}x{solicitacao.dispositivo_info.screenHeight}
+                          </p>
+                        )}
+                        {solicitacao.dispositivo_info.connection?.effectiveType && (
+                          <p className="flex items-center text-gray-600">
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.111 16.404a5.5 5.5 0 017.778 0M12 20h.01m-7.08-7.071c3.904-3.905 10.236-3.905 14.14 0M1.394 9.393c5.857-5.857 15.355-5.857 21.213 0" />
+                            </svg>
+                            <span className="font-medium mr-2">Conexão:</span> {solicitacao.dispositivo_info.connection.effectiveType}
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       );
     };
@@ -363,10 +389,10 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesPendentes.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                   <h3 className="font-medium">{solicitacao.titulo}</h3>
-                  <span className="text-sm text-gray-500">
-                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
+                  <span className="text-sm text-gray-500 sm:text-right">
+                    Solicitado em: {new Date(solicitacao.data_criacao).toLocaleDateString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
@@ -378,14 +404,14 @@ export default function AdminDashboard() {
                     {solicitacao.local}
                   </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <select
                     value={prioridadeSelecionada[solicitacao.id] || ''}
                     onChange={(e) => setPrioridadeSelecionada({
                       ...prioridadeSelecionada,
                       [solicitacao.id]: e.target.value
                     })}
-                    className="text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                    className="w-full sm:w-auto text-sm border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   >
                     <option value="">Selecione a prioridade</option>
                     <option value="alta">Alta</option>
@@ -395,7 +421,7 @@ export default function AdminDashboard() {
                   <button
                     onClick={() => handleAprovarSolicitacao(solicitacao.id)}
                     disabled={!prioridadeSelecionada[solicitacao.id]}
-                    className={`px-3 py-1 text-sm font-medium rounded-md ${
+                    className={`w-full sm:w-auto px-3 py-1 text-sm font-medium rounded-md ${
                       prioridadeSelecionada[solicitacao.id]
                         ? 'bg-green-600 text-white hover:bg-green-700'
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -405,7 +431,7 @@ export default function AdminDashboard() {
                   </button>
                   <button
                     onClick={() => handleReprovarSolicitacao(solicitacao.id)}
-                    className="px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    className="w-full sm:w-auto px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
                   >
                     Reprovar
                   </button>
@@ -427,10 +453,10 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesEmAndamento.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                   <h3 className="font-medium">{solicitacao.titulo}</h3>
-                  <span className="text-sm text-gray-500">
-                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
+                  <span className="text-sm text-gray-500 sm:text-right">
+                    Solicitado em: {new Date(solicitacao.data_criacao).toLocaleDateString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
@@ -470,10 +496,10 @@ export default function AdminDashboard() {
           <div className="space-y-4">
             {solicitacoesConcluidas.map(solicitacao => (
               <div key={solicitacao.id} className="border rounded-lg p-4">
-                <div className="flex justify-between items-start mb-2">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                   <h3 className="font-medium">{solicitacao.titulo}</h3>
-                  <span className="text-sm text-gray-500">
-                    {new Date(solicitacao.data_criacao).toLocaleDateString()}
+                  <span className="text-sm text-gray-500 sm:text-right">
+                    Solicitado em: {new Date(solicitacao.data_criacao).toLocaleDateString()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 mb-2">{solicitacao.descricao}</p>
