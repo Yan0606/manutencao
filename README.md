@@ -59,21 +59,94 @@ O projeto está dividido em duas partes principais:
 
 ## 🛠️ Rotas da API
 
-### Autenticação e Administração (`/admin`)
-- POST `/admin/login` - Login de administrador
-- POST `/admin/register` - Registro de novo administrador
-- GET `/admin/profile` - Perfil do administrador
-- PUT `/admin/profile` - Atualização de dados do administrador
-- PATCH `/admin/solicitacoes/:id` - Aprovar/reprovar solicitação (inclui definição de prioridade)
+<h3>🔐 Autenticação e Administração (<code>/admin</code>)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Método</th>
+      <th>Rota</th>
+      <th>Descrição</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>POST</td>
+      <td><code>/admin/login</code></td>
+      <td>Login de administrador</td>
+    </tr>
+    <tr>
+      <td>POST</td>
+      <td><code>/admin/register</code></td>
+      <td>Registro de novo administrador</td>
+    </tr>
+    <tr>
+      <td>GET</td>
+      <td><code>/admin/profile</code></td>
+      <td>Perfil do administrador</td>
+    </tr>
+    <tr>
+      <td>PUT</td>
+      <td><code>/admin/profile</code></td>
+      <td>Atualização de dados do administrador</td>
+    </tr>
+    <tr>
+      <td>PATCH</td>
+      <td><code>/admin/solicitacoes/:id</code></td>
+      <td>Aprovar/reprovar solicitação (inclui definição de prioridade)</td>
+    </tr>
+  </tbody>
+</table>
 
-### Técnicos (`/tecnicos`)
-- GET `/tecnicos/acesso/:token` - Validar acesso do técnico
-- GET `/tecnicos/manutencoes/:token` - Listar manutenções do técnico
-- PATCH `/tecnicos/manutencoes/:token/:id/status` - Atualizar status da manutenção
+<h3>🧰 Técnicos (<code>/tecnicos</code>)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Método</th>
+      <th>Rota</th>
+      <th>Descrição</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>GET</td>
+      <td><code>/tecnicos/acesso/:token</code></td>
+      <td>Validar acesso do técnico</td>
+    </tr>
+    <tr>
+      <td>GET</td>
+      <td><code>/tecnicos/manutencoes/:token</code></td>
+      <td>Listar manutenções do técnico</td>
+    </tr>
+    <tr>
+      <td>PATCH</td>
+      <td><code>/tecnicos/manutencoes/:token/:id/status</code></td>
+      <td>Atualizar status da manutenção</td>
+    </tr>
+  </tbody>
+</table>
 
-### Solicitações (`/solicitacoes`)
-- POST `/solicitacoes` - Criar nova solicitação
-- GET `/solicitacoes` - Listar solicitações (com filtros)
+<h3>📩 Solicitações (<code>/solicitacoes</code>)</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Método</th>
+      <th>Rota</th>
+      <th>Descrição</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>POST</td>
+      <td><code>/solicitacoes</code></td>
+      <td>Criar nova solicitação</td>
+    </tr>
+    <tr>
+      <td>GET</td>
+      <td><code>/solicitacoes</code></td>
+      <td>Listar solicitações (com filtros)</td>
+    </tr>
+  </tbody>
+</table>
 
 ## ⚙️ Instalação e Execução
 
